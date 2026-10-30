@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Home Hub - Monitoring Aktivitas, Kebutuhan & Jaringan Rumah</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            },
+            dark: {
+              bg: '#0B0F17',
+              card: '#111827',
+              border: '#1F2937',
+              hover: '#1E293B',
+              muted: '#9CA3AF'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.2);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.4);
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .glow-accent {
+      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+    }
+  </style>
+</head>
+<body class="bg-[#0B0F17] text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-gray-800 bg-[#0E131F]/90 backdrop-blur sticky top-0 z-40 px-4 lg:px-8 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Logo & System Status -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white">
+          <i data-lucide="home" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white">HomeOps Studio</h1>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE
+            </span>
+          </div>
+          <p class="text-xs text-gray-400">Monitoring Aktivitas, Inventaris, Tagihan & WiFi Rumah</p>
+        </div>
+      </div>
+
+      <!-- Quick Status Badges & Time -->
+      <div class="flex items-center gap-4">
+        <!-- Live Clock -->
+        <div class="hidden sm:flex flex-col items-end border-r border-gray-800 pr-4">
+          <span id="liveClock" class="font-mono text-sm font-semibold tracking-wider text-slate-200">12:00:00</span>
+          <span id="liveDate" class="text-[11px] text-gray-400">Jumat, 30 Okt 2026</span>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div class="flex items-center gap-2">
+          <button onclick="openModal('addItemModal')" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Tambah Item</span>
+          </button>
+          <button onclick="openModal('addDeviceModal')" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-600/20 transition-all">
+            <i data-lucide="wifi" class="w-4 h-4"></i>
+            <span>Tambah Device</span>
+          </button>
+          <button onclick="resetToSampleData()" title="Reset ke Data Default" class="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+    <!-- KPI Metric Cards Banner (5 Metrics) -->
+    <section class="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+      
+      <!-- Card 1: WiFi Active Devices -->
+      <div class="glass-card rounded-2xl p-4 transition-all duration-200 relative overflow-hidden group border-cyan-500/20">
+        <div class="absolute -right-2 -top-2 w-16 h-16 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-all"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-gray-400">Perangkat WiFi</span>
+          <div class="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <i data-lucide="wifi" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiWifiOnline" class="text-2xl font-bold font-mono text-cyan-400">0</span>
+          <span class="text-xs text-gray-400">online</span>
+        </div>
+        <div class="mt-2 flex items-center text-[11px] text-cyan-400/80">
+          <span id="kpiWifiTotal">0 terdaftar</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Stok Butuh Restock -->
+      <div class="glass-card rounded-2xl p-4 transition-all duration-200 relative overflow-hidden group">
+        <div class="absolute -right-2 -top-2 w-16 h-16 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-gray-400">Stok Menipis</span>
+          <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiLowStock" class="text-2xl font-bold font-mono text-amber-400">0</span>
+          <span class="text-xs text-gray-400">item segera dibeli</span>
+        </div>
+        <div class="mt-2 flex items-center text-[11px] text-amber-500/80">
+          <span>Perlu belanja</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Tugas Hari Ini -->
+      <div class="glass-card rounded-2xl p-4 transition-all duration-200 relative overflow-hidden group">
+        <div class="absolute -right-2 -top-2 w-16 h-16 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-gray-400">Aktivitas & Tugas</span>
+          <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <i data-lucide="check-square" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiTasksPending" class="text-2xl font-bold font-mono text-blue-400">0</span>
+          <span class="text-xs text-gray-400">pending</span>
+        </div>
+        <div class="mt-2 flex items-center text-[11px] text-gray-400">
+          <span id="kpiTasksDone">0 tugas tuntas</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Tagihan Pending -->
+      <div class="glass-card rounded-2xl p-4 transition-all duration-200 relative overflow-hidden group">
+        <div class="absolute -right-2 -top-2 w-16 h-16 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition-all"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-gray-400">Tagihan Utilitas</span>
+          <div class="p-2 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiUnpaidBills" class="text-2xl font-bold font-mono text-rose-400">0</span>
+          <span class="text-xs text-gray-400">belum lunas</span>
+        </div>
+        <div class="mt-2 flex items-center text-[11px] text-rose-400/80 font-mono">
+          <span id="kpiTotalUnpaid">Rp 0</span>
+        </div>
+      </div>
+
+      <!-- Card 5: Health Rate Rumah -->
+      <div class="glass-card rounded-2xl p-4 transition-all duration-200 relative overflow-hidden group">
+        <div class="absolute -right-2 -top-2 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-gray-400">House Readiness</span>
+          <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiReadiness" class="text-2xl font-bold font-mono text-emerald-400">92%</span>
+          <span class="text-xs text-emerald-500/80">Optimal</span>
+        </div>
+        <div class="mt-2 w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+          <div id="readinessBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-1.5 rounded-full" style="width: 92%"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Navigation Filter Tabs -->
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-800/80 pb-3">
+      <div class="flex items-center gap-1.5 bg-[#111827] p-1.5 rounded-xl border border-gray-800">
+        <button onclick="switchTab('all')" id="tabBtn-all" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 bg-emerald-600 text-white shadow-sm">
+          Semua Overview
+        </button>
+        <button onclick="switchTab('wifi')" id="tabBtn-wifi" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all">
+          <span class="inline-flex items-center gap-1.5"><i data-lucide="wifi" class="w-3.5 h-3.5 text-cyan-400"></i> Monitoring WiFi</span>
+        </button>
+        <button onclick="switchTab('inventory')" id="tabBtn-inventory" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all">
+          Inventaris & Belanja
+        </button>
+        <button onclick="switchTab('tasks')" id="tabBtn-tasks" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all">
+          Aktivitas & Rutinitas
+        </button>
+        <button onclick="switchTab('bills')" id="tabBtn-bills" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all">
+          Tagihan & Maintenance
+        </button>
+      </div>
+
+      <!-- Search & Filter Input -->
+      <div class="flex items-center gap-2">
+        <div class="relative w-64">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-gray-500"></i>
+          <input id="globalSearch" onkeyup="handleGlobalSearch()" type="text" placeholder="Cari IP, perangkat, kebutuhan, tugas..." class="w-full bg-[#111827] border border-gray-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500">
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID PANELS -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- LEFT & CENTER (2 COLS): MONITORING WIFI + INVENTARIS + AKTIVITAS -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- PANEL 0: MONITORING PERANGKAT TERKONEKSI WIFI (FITUR BARU) -->
+        <section id="panelWifi" class="glass-card rounded-2xl p-5 border border-cyan-500/20">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <i data-lucide="router" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-sm font-bold text-white">Monitoring Perangkat WiFi Rumah</h2>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">SSID: HomeFiber_5G</span>
+                </div>
+                <p class="text-xs text-gray-400">Pantau siapa saja yang tersambung, IP Address, MAC, serta deteksi perangkat asing</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="scanNetwork()" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-colors">
+                <i data-lucide="refresh-cw" id="scanIcon" class="w-3.5 h-3.5 text-cyan-400"></i>
+                <span>Scan Ulang Jaringan</span>
+              </button>
+              <button onclick="openModal('addDeviceModal')" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white transition-colors">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Device
+              </button>
+            </div>
+          </div>
+
+          <!-- Router Info Strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 p-3 rounded-xl bg-gray-950/70 border border-gray-800/80 text-xs">
+            <div>
+              <span class="text-[10px] text-gray-500 block">Gateway Router</span>
+              <span class="font-mono text-cyan-400 font-semibold">192.168.1.1</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-gray-500 block">Subnet Mask</span>
+              <span class="font-mono text-gray-300">255.255.255.0</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-gray-500 block">Bandwidth Usage</span>
+              <span class="font-mono text-emerald-400 font-semibold">↑ 4.2 Mbps / ↓ 28.5 Mbps</span>
+            </div>
+            <div>
+              <span class="text-[10px] text-gray-500 block">Status Keamanan</span>
+              <span class="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                <i data-lucide="shield-check" class="w-3 h-3"></i> WPA3 Protected
+              </span>
+            </div>
+          </div>
+
+          <!-- Connected Devices Table -->
+          <div class="overflow-x-auto border border-gray-800/80 rounded-xl bg-gray-950/40">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-900/60 text-gray-400 border-b border-gray-800/80 font-medium">
+                <tr>
+                  <th class="py-2.5 px-3">Nama Perangkat & Pemilik</th>
+                  <th class="py-2.5 px-3">Tipe / Vendor</th>
+                  <th class="py-2.5 px-3">IP Address</th>
+                  <th class="py-2.5 px-3">MAC Address</th>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="wifiDevicesTableBody" class="divide-y divide-gray-800/50">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- PANEL 1: KEBUTUHAN & INVENTARIS RUMAH -->
+        <section id="panelInventory" class="glass-card rounded-2xl p-5 border border-gray-800">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+                <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-sm font-bold text-white">Inventaris & Daftar Belanja Rumah</h2>
+                <p class="text-xs text-gray-400">Pantau ketersediaan sembako, bumbu, toiletries, dan kebutuhan rutin</p>
+              </div>
+            </div>
+            <button onclick="openModal('addItemModal')" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Item
+            </button>
+          </div>
+
+          <!-- Inventory Filter Pills -->
+          <div class="flex items-center gap-2 mb-3 text-[11px] overflow-x-auto pb-1">
+            <button onclick="filterInventory('all')" class="inv-filter-btn px-2.5 py-1 rounded-md bg-gray-800 text-white font-medium">Semua</button>
+            <button onclick="filterInventory('low')" class="inv-filter-btn px-2.5 py-1 rounded-md bg-transparent text-gray-400 hover:text-white">Butuh Restock</button>
+            <button onclick="filterInventory('Dapur')" class="inv-filter-btn px-2.5 py-1 rounded-md bg-transparent text-gray-400 hover:text-white">Dapur & Sembako</button>
+            <button onclick="filterInventory('Mandi')" class="inv-filter-btn px-2.5 py-1 rounded-md bg-transparent text-gray-400 hover:text-white">Toiletries & Cuci</button>
+            <button onclick="filterInventory('Lainnya')" class="inv-filter-btn px-2.5 py-1 rounded-md bg-transparent text-gray-400 hover:text-white">Lain-lain</button>
+          </div>
+
+          <!-- Table Items -->
+          <div class="overflow-x-auto border border-gray-800/80 rounded-xl bg-gray-950/40">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-gray-900/60 text-gray-400 border-b border-gray-800/80 font-medium">
+                <tr>
+                  <th class="py-2.5 px-3">Nama Kebutuhan</th>
+                  <th class="py-2.5 px-3">Kategori</th>
+                  <th class="py-2.5 px-3">Status Stok</th>
+                  <th class="py-2.5 px-3">Sisa / Satuan</th>
+                  <th class="py-2.5 px-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryTableBody" class="divide-y divide-gray-800/50">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- PANEL 2: AKTIVITAS & JADWAL RUMAH (TASK LIST) -->
+        <section id="panelTasks" class="glass-card rounded-2xl p-5 border border-gray-800">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                <i data-lucide="calendar-check" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-sm font-bold text-white">Aktivitas & Rutinitas Kebersihan Rumah</h2>
+                <p class="text-xs text-gray-400">Jadwal tugas harian & mingguan keluarga</p>
+              </div>
+            </div>
+            <button onclick="openModal('addTaskModal')" class="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Tugas
+            </button>
+          </div>
+
+          <!-- Tasks List -->
+          <div id="tasksListContainer" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN (1 COL): TAGIHAN, MAINTENANCE, KONTAK PENTING -->
+      <div class="space-y-6">
+
+        <!-- PANEL 3: TAGIHAN & BIAYA BULANAN -->
+        <section id="panelBills" class="glass-card rounded-2xl p-5 border border-gray-800">
+          <div class="flex items-center justify-between mb-3.5">
+            <div class="flex items-center gap-2">
+              <div class="p-2 rounded-lg bg-rose-500/10 text-rose-400">
+                <i data-lucide="wallet" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-sm font-bold text-white">Tagihan & Utilitas</h2>
+                <p class="text-[11px] text-gray-400">Jatuh tempo bulan ini</p>
+              </div>
+            </div>
+            <button onclick="openModal('addBillModal')" class="p-1 text-gray-400 hover:text-white">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Bills list -->
+          <div id="billsListContainer" class="space-y-2.5">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- PANEL 4: JADWAL MAINTENANCE BERKALA -->
+        <section class="glass-card rounded-2xl p-5 border border-gray-800">
+          <div class="flex items-center gap-2 mb-3.5">
+            <div class="p-2 rounded-lg bg-teal-500/10 text-teal-400">
+              <i data-lucide="wrench" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-white">Perawatan Berkala (Maintenance)</h2>
+              <p class="text-[11px] text-gray-400">Pencegahan kerusakan fasilitas rumah</p>
+            </div>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800/80 flex items-center justify-between">
+              <div>
+                <div class="font-semibold text-slate-200">Cuci AC Kamar & Ruang Tamu</div>
+                <div class="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                  <i data-lucide="clock" class="w-3 h-3 text-amber-400"></i>
+                  <span>Jatuh tempo: 15 Nov 2026 (Tiap 3 Bln)</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                Segera
+              </span>
+            </div>
+
+            <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800/80 flex items-center justify-between">
+              <div>
+                <div class="font-semibold text-slate-200">Kuras Tandon & Filter Air</div>
+                <div class="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                  <i data-lucide="check" class="w-3 h-3 text-emerald-400"></i>
+                  <span>Terakhir: 10 Okt 2026 (Aman)</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                OK
+              </span>
+            </div>
+
+            <div class="p-3 rounded-xl bg-gray-950/60 border border-gray-800/80 flex items-center justify-between">
+              <div>
+                <div class="font-semibold text-slate-200">Ganti Tabung Gas LPG 12kg</div>
+                <div class="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                  <i data-lucide="check" class="w-3 h-3 text-emerald-400"></i>
+                  <span>Estimasi habis: 20 Nov 2026</span>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                OK
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- PANEL 5: KONTAK DARURAT & INFO CEPAT -->
+        <section class="glass-card rounded-2xl p-5 border border-gray-800">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+              <i data-lucide="phone-call" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-white">Kontak Cepat & Darurat</h2>
+              <p class="text-[11px] text-gray-400">Akses instan nomor penting lingkungan</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="p-2.5 bg-gray-900/60 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+              <span class="text-[10px] text-gray-400 block">Pos Satpam / Security</span>
+              <span class="font-mono text-emerald-400 font-semibold">0812-3456-7890</span>
+            </div>
+            <div class="p-2.5 bg-gray-900/60 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+              <span class="text-[10px] text-gray-400 block">Pak RT / RW</span>
+              <span class="font-mono text-emerald-400 font-semibold">0813-9876-5432</span>
+            </div>
+            <div class="p-2.5 bg-gray-900/60 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+              <span class="text-[10px] text-gray-400 block">Teknisi Listrik / AC</span>
+              <span class="font-mono text-emerald-400 font-semibold">0857-1122-3344</span>
+            </div>
+            <div class="p-2.5 bg-gray-900/60 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors">
+              <span class="text-[10px] text-gray-400 block">Klinik / Ambulans</span>
+              <span class="font-mono text-rose-400 font-semibold">118 / 119</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: TAMBAH PERANGKAT WIFI -->
+  <div id="addDeviceModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="wifi" class="w-4 h-4 text-cyan-400"></i> Daftarkan Perangkat WiFi
+        </h3>
+        <button onclick="closeModal('addDeviceModal')" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="deviceForm" onsubmit="handleSaveDevice(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">Nama Perangkat</label>
+          <input type="text" id="devName" required placeholder="Contoh: Samsung Galaxy S23 (Ayah)" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Pemilik / Pengguna</label>
+            <input type="text" id="devOwner" placeholder="Contoh: Ayah / Tamu" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">Tipe / Kategori Perangkat</label>
+            <select id="devType" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+              <option value="Smartphone">Smartphone</option>
+              <option value="Laptop / PC">Laptop / PC</option>
+              <option value="Smart TV">Smart TV</option>
+              <option value="CCTV / IoT">CCTV / Smart Home</option>
+              <option value="Tablet">Tablet</option>
+              <option value="Lainnya">Lainnya / Tamu</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">IP Address</label>
+            <input type="text" id="devIP" placeholder="192.168.1.xxx" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-mono">
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">MAC Address (Opsional)</label>
+            <input type="text" id="devMAC" placeholder="XX:XX:XX:XX:XX:XX" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-mono">
+          </div>
+        </div>
+        <div>
+          <label class="block text-gray-400 mb-1">Status Kepercayaan</label>
+          <select id="devTrust" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500">
+            <option value="trusted">🟢 Dikenal & Tepercaya (Keluarga/Rumah)</option>
+            <option value="guest">🟡 Tamu (Guest Network)</option>
+            <option value="unknown">🔴 Perangkat Asing (Curigai/Blokir)</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
+          <button type="button" onclick="closeModal('addDeviceModal')" class="px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800">Batal</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">Simpan Perangkat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAMBAH ITEM INVENTARIS -->
+  <div id="addItemModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="package-plus" class="w-4 h-4 text-emerald-400"></i> Tambah Kebutuhan / Stok
+        </h3>
+        <button onclick="closeModal('addItemModal')" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="itemForm" onsubmit="handleSaveItem(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">Nama Barang / Kebutuhan</label>
+          <input type="text" id="itemName" required placeholder="Contoh: Beras Premium 5kg" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Kategori</label>
+            <select id="itemCategory" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+              <option value="Dapur">Dapur & Sembako</option>
+              <option value="Mandi">Toiletries & Mandi</option>
+              <option value="Cuci">Pembersih & Cuci</option>
+              <option value="Lainnya">Lain-lain</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">Status Ketersediaan</label>
+            <select id="itemStatus" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+              <option value="Tersedia">🟢 Tersedia Aman</option>
+              <option value="Menipis">🟡 Menipis (Restock)</option>
+              <option value="Habis">🔴 Habis (Prioritas)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Jumlah Sisa</label>
+            <input type="text" id="itemQuantity" placeholder="Contoh: 1 karung / 2 botol" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">Estimasi Harga (Opsional)</label>
+            <input type="number" id="itemPrice" placeholder="Rp" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
+          <button type="button" onclick="closeModal('addItemModal')" class="px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800">Batal</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium">Simpan Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAMBAH TUGAS -->
+  <div id="addTaskModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="calendar-plus" class="w-4 h-4 text-blue-400"></i> Tambah Aktivitas Rumah
+        </h3>
+        <button onclick="closeModal('addTaskModal')" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="taskForm" onsubmit="handleSaveTask(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">Deskripsi Tugas</label>
+          <input type="text" id="taskTitle" required placeholder="Contoh: Kuras bak mandi, Bersihkan teras" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Penanggung Jawab</label>
+            <input type="text" id="taskAssignee" placeholder="Contoh: Ayah / Ibu / Kakak" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">Frekuensi</label>
+            <select id="taskFrequency" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+              <option value="Harian">Harian</option>
+              <option value="Mingguan">Mingguan</option>
+              <option value="Bulanan">Bulanan</option>
+              <option value="Sekali">Sekali Saja</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-gray-400 mb-1">Waktu Pelaksanaan</label>
+          <input type="text" id="taskSchedule" placeholder="Contoh: Setiap Pagi 07:00 / Sabtu Sore" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
+          <button type="button" onclick="closeModal('addTaskModal')" class="px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800">Batal</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium">Simpan Tugas</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAMBAH TAGIHAN -->
+  <div id="addBillModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="receipt" class="w-4 h-4 text-rose-400"></i> Tambah Tagihan Utilitas
+        </h3>
+        <button onclick="closeModal('addBillModal')" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="billForm" onsubmit="handleSaveBill(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-gray-400 mb-1">Nama Tagihan</label>
+          <input type="text" id="billName" required placeholder="Contoh: WiFi Indihome / PLN Listrik" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-rose-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Nominal (Rp)</label>
+            <input type="number" id="billAmount" required placeholder="350000" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-rose-500">
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">Tanggal Jatuh Tempo</label>
+            <input type="text" id="billDueDate" placeholder="Tiap tgl 20" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-rose-500">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
+          <button type="button" onclick="closeModal('addBillModal')" class="px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800">Batal</button>
+          <button type="submit" class="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium">Simpan Tagihan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Initial State & Mock Data
+    const defaultData = {
+      wifiDevices: [
+        { id: 1, name: "iPhone 15 Pro", owner: "Ayah", type: "Smartphone", vendor: "Apple Inc.", ip: "192.168.1.102", mac: "DC:A9:04:1A:3B:7F", online: true, trust: "trusted" },
+        { id: 2, name: "Samsung Galaxy A54", owner: "Ibu", type: "Smartphone", vendor: "Samsung", ip: "192.168.1.105", mac: "44:91:60:E2:11:08", online: true, trust: "trusted" },
+        { id: 3, name: "MacBook Air M2", owner: "Ayah", type: "Laptop / PC", vendor: "Apple Inc.", ip: "192.168.1.110", mac: "F0:18:98:87:CD:45", online: true, trust: "trusted" },
+        { id: 4, name: "LG Smart TV 4K", owner: "Ruang Keluarga", type: "Smart TV", vendor: "LG Electronics", ip: "192.168.1.120", mac: "B8:27:EB:44:90:1A", online: true, trust: "trusted" },
+        { id: 5, name: "Bardi CCTV Depan Pagar", owner: "Smart Home", type: "CCTV / IoT", vendor: "Tuya/Bardi", ip: "192.168.1.150", mac: "50:02:91:AA:BB:CC", online: true, trust: "trusted" },
+        { id: 6, name: "Bardi CCTV Ruang Tamu", owner: "Smart Home", type: "CCTV / IoT", vendor: "Tuya/Bardi", ip: "192.168.1.151", mac: "50:02:91:AA:BB:DD", online: true, trust: "trusted" },
+        { id: 7, name: "Xiaomi Pad 6", owner: "Kakak", type: "Tablet", vendor: "Xiaomi", ip: "192.168.1.114", mac: "9C:2E:A1:33:44:55", online: false, trust: "trusted" },
+        { id: 8, name: "Perangkat Tak Dikenal (Android)", owner: "Tamu / Asing", type: "Lainnya", vendor: "Oppo Mobile", ip: "192.168.1.189", mac: "28:6C:07:99:88:77", online: true, trust: "unknown" }
+      ],
+      inventory: [
+        { id: 1, name: "Beras Rojolele 10kg", category: "Dapur", status: "Tersedia", qty: "8 kg", price: 140000 },
+        { id: 2, name: "Minyak Goreng 2L", category: "Dapur", status: "Menipis", qty: "Sisa 1/4 pouch", price: 34000 },
+        { id: 3, name: "Telur Ayam 1 Tray", category: "Dapur", status: "Tersedia", qty: "20 butir", price: 55000 },
+        { id: 4, name: "Sabun Mandi Cair Refill", category: "Mandi", status: "Habis", qty: "0 (Habis)", price: 26000 },
+        { id: 5, name: "Deterjen Cair 1.8L", category: "Cuci", status: "Tersedia", qty: "1 pouch", price: 38000 },
+        { id: 6, name: "Gas LPG 12kg (Tabung)", category: "Dapur", status: "Tersedia", qty: "1 tabung aktif", price: 215000 },
+        { id: 7, name: "Galon Air Mineral", category: "Dapur", status: "Menipis", qty: "1 galon sisa 20%", price: 20000 },
+        { id: 8, name: "Spons Cuci Piring", category: "Cuci", status: "Habis", qty: "0", price: 8000 }
+      ],
+      tasks: [
+        { id: 1, title: "Keluarkan Sampah ke Depan Pagar", assignee: "Ayah", freq: "Harian", schedule: "Pagi 06:30", done: true },
+        { id: 2, title: "Sapu & Pel Lantai Utama", assignee: "Ibu", freq: "Harian", schedule: "Pagi 08:00", done: false },
+        { id: 3, title: "Siram Tanaman & Bersihkan Halaman", assignee: "Kakak", freq: "Harian", schedule: "Sore 16:30", done: false },
+        { id: 4, title: "Kuras Bak Kamar Mandi & Sikat Lantai", assignee: "Ayah", freq: "Mingguan", schedule: "Sabtu Pagi", done: false },
+        { id: 5, title: "Cuci & Jemur Sprei / Gorden", assignee: "Ibu", freq: "Mingguan", schedule: "Minggu Pagi", done: true }
+      ],
+      bills: [
+        { id: 1, name: "Listrik PLN Pascabayar", amount: 485000, due: "Tiap tgl 20", paid: false },
+        { id: 2, name: "Internet WiFi Indihome", amount: 375000, due: "Tiap tgl 15", paid: true },
+        { id: 3, name: "Iuran Keamanan & Sampah (IPL RT)", amount: 150000, due: "Tiap tgl 10", paid: false },
+        { id: 4, name: "Air PDAM", amount: 125000, due: "Tiap tgl 25", paid: true }
+      ]
+    };
+
+    // Load or initialize LocalStorage
+    let state = {
+      wifiDevices: JSON.parse(localStorage.getItem('home_wifi_devices')) || defaultData.wifiDevices,
+      inventory: JSON.parse(localStorage.getItem('home_inventory')) || defaultData.inventory,
+      tasks: JSON.parse(localStorage.getItem('home_tasks')) || defaultData.tasks,
+      bills: JSON.parse(localStorage.getItem('home_bills')) || defaultData.bills,
+      filterInv: 'all',
+      searchQuery: ''
+    };
+
+    function saveState() {
+      localStorage.setItem('home_wifi_devices', JSON.stringify(state.wifiDevices));
+      localStorage.setItem('home_inventory', JSON.stringify(state.inventory));
+      localStorage.setItem('home_tasks', JSON.stringify(state.tasks));
+      localStorage.setItem('home_bills', JSON.stringify(state.bills));
+      renderDashboard();
+    }
+
+    function resetToSampleData() {
+      if (confirm("Reset data ke kondisi awal contoh?")) {
+        state.wifiDevices = [...defaultData.wifiDevices];
+        state.inventory = [...defaultData.inventory];
+        state.tasks = [...defaultData.tasks];
+        state.bills = [...defaultData.bills];
+        saveState();
+      }
+    }
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // Format Currency
+    function formatRp(num) {
+      return 'Rp ' + Number(num).toLocaleString('id-ID');
+    }
+
+    // Render KPI Metrics
+    function renderKPIs() {
+      // WiFi Metrics
+      const onlineWifi = state.wifiDevices.filter(d => d.online).length;
+      document.getElementById('kpiWifiOnline').innerText = onlineWifi;
+      document.getElementById('kpiWifiTotal').innerText = `${state.wifiDevices.length} terdaftar`;
+
+      // Inventory Metrics
+      const lowStockCount = state.inventory.filter(i => i.status === 'Menipis' || i.status === 'Habis').length;
+      document.getElementById('kpiLowStock').innerText = lowStockCount;
+
+      // Tasks Metrics
+      const pendingTasks = state.tasks.filter(t => !t.done).length;
+      const doneTasks = state.tasks.filter(t => t.done).length;
+      document.getElementById('kpiTasksPending').innerText = pendingTasks;
+      document.getElementById('kpiTasksDone').innerText = `${doneTasks} selesai`;
+
+      // Bills Metrics
+      const unpaidBills = state.bills.filter(b => !b.paid);
+      const totalUnpaid = unpaidBills.reduce((acc, b) => acc + (b.amount || 0), 0);
+      document.getElementById('kpiUnpaidBills').innerText = unpaidBills.length;
+      document.getElementById('kpiTotalUnpaid').innerText = formatRp(totalUnpaid);
+
+      // House Readiness Metric
+      const totalChecks = state.inventory.length + state.tasks.length;
+      const goodChecks = (state.inventory.length - lowStockCount) + doneTasks;
+      const readiness = Math.round((goodChecks / (totalChecks || 1)) * 100);
+      document.getElementById('kpiReadiness').innerText = readiness + '%';
+      document.getElementById('readinessBar').style.width = readiness + '%';
+    }
+
+    // Render WiFi Devices Table
+    function renderWifiDevices() {
+      const tbody = document.getElementById('wifiDevicesTableBody');
+      tbody.innerHTML = '';
+
+      let devices = state.wifiDevices;
+      if (state.searchQuery) {
+        devices = devices.filter(d => 
+          d.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+          d.owner.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+          d.ip.includes(state.searchQuery) ||
+          d.mac.toLowerCase().includes(state.searchQuery.toLowerCase())
+        );
+      }
+
+      if (devices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-500">Tidak ada perangkat WiFi yang cocok dengan pencarian.</td></tr>`;
+        return;
+      }
+
+      devices.forEach(dev => {
+        // Icon per device type
+        let devIcon = 'smartphone';
+        if (dev.type.includes('Laptop') || dev.type.includes('PC')) devIcon = 'laptop';
+        else if (dev.type.includes('TV')) devIcon = 'tv';
+        else if (dev.type.includes('CCTV') || dev.type.includes('IoT')) devIcon = 'video';
+        else if (dev.type.includes('Tablet')) devIcon = 'tablet';
+
+        // Online status badge
+        const onlineBadge = dev.online 
+          ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online</span>'
+          : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20"><span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Offline</span>';
+
+        // Trust badge
+        let trustBadge = '';
+        if (dev.trust === 'trusted') {
+          trustBadge = '<span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">Tepercaya</span>';
+        } else if (dev.trust === 'guest') {
+          trustBadge = '<span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Tamu</span>';
+        } else {
+          trustBadge = '<span class="text-[10px] text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20 animate-pulse">⚠️ Asing / Blokir?</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-gray-900/40 transition-colors border-b border-gray-800/40 ${dev.trust === 'unknown' ? 'bg-rose-950/20' : ''}`;
+        tr.innerHTML = `
+          <td class="py-3 px-3">
+            <div class="flex items-center gap-2.5">
+              <div class="p-1.5 rounded-lg bg-gray-800/80 text-cyan-400">
+                <i data-lucide="${devIcon}" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="font-medium text-slate-200 flex items-center gap-1.5">
+                  ${dev.name} ${trustBadge}
+                </div>
+                <div class="text-[10px] text-gray-500">Milik: <span class="text-gray-400 font-medium">${dev.owner}</span></div>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-3">
+            <div class="text-slate-300">${dev.type}</div>
+            <div class="text-[10px] text-gray-500">${dev.vendor || '-'}</div>
+          </td>
+          <td class="py-3 px-3 font-mono text-cyan-400">${dev.ip}</td>
+          <td class="py-3 px-3 font-mono text-gray-400 text-[11px]">${dev.mac}</td>
+          <td class="py-3 px-3">${onlineBadge}</td>
+          <td class="py-3 px-3 text-right">
+            <div class="inline-flex items-center gap-1">
+              <button onclick="toggleDeviceOnline(${dev.id})" title="Toggle Online / Offline" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-cyan-400 transition-colors">
+                <i data-lucide="power" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="toggleDeviceTrust(${dev.id})" title="Ubah Status Tepercaya / Asing" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-amber-400 transition-colors">
+                <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="deleteDevice(${dev.id})" title="Hapus Perangkat" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-rose-400 transition-colors">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleDeviceOnline(id) {
+      const dev = state.wifiDevices.find(d => d.id === id);
+      if (dev) {
+        dev.online = !dev.online;
+        saveState();
+      }
+    }
+
+    function toggleDeviceTrust(id) {
+      const dev = state.wifiDevices.find(d => d.id === id);
+      if (dev) {
+        if (dev.trust === 'trusted') dev.trust = 'guest';
+        else if (dev.trust === 'guest') dev.trust = 'unknown';
+        else dev.trust = 'trusted';
+        saveState();
+      }
+    }
+
+    function deleteDevice(id) {
+      if (confirm("Hapus perangkat ini dari daftar monitoring?")) {
+        state.wifiDevices = state.wifiDevices.filter(d => d.id !== id);
+        saveState();
+      }
+    }
+
+    function scanNetwork() {
+      const icon = document.getElementById('scanIcon');
+      icon.classList.add('animate-spin');
+      setTimeout(() => {
+        icon.classList.remove('animate-spin');
+        alert("Scan jaringan selesai. Semua perangkat terverifikasi dalam jangkauan WiFi rumah.");
+        renderWifiDevices();
+        lucide.createIcons();
+      }, 1000);
+    }
+
+    // Render Inventory Table
+    function renderInventory() {
+      const tbody = document.getElementById('inventoryTableBody');
+      tbody.innerHTML = '';
+
+      let items = state.inventory;
+
+      // Filter by category or low stock
+      if (state.filterInv === 'low') {
+        items = items.filter(i => i.status === 'Menipis' || i.status === 'Habis');
+      } else if (state.filterInv !== 'all') {
+        items = items.filter(i => i.category.toLowerCase().includes(state.filterInv.toLowerCase()));
+      }
+
+      // Filter by global search
+      if (state.searchQuery) {
+        items = items.filter(i => i.name.toLowerCase().includes(state.searchQuery.toLowerCase()));
+      }
+
+      if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-500">Tidak ada item inventaris yang sesuai.</td></tr>`;
+        return;
+      }
+
+      items.forEach(item => {
+        let statusBadge = '';
+        if (item.status === 'Tersedia') {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Tersedia</span>';
+        } else if (item.status === 'Menipis') {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Menipis</span>';
+        } else {
+          statusBadge = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Habis</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-900/40 transition-colors border-b border-gray-800/40';
+        tr.innerHTML = `
+          <td class="py-3 px-3">
+            <div class="font-medium text-slate-200">${item.name}</div>
+            ${item.price ? `<div class="text-[10px] text-gray-500 font-mono">Est: ${formatRp(item.price)}</div>` : ''}
+          </td>
+          <td class="py-3 px-3 text-gray-400">${item.category}</td>
+          <td class="py-3 px-3">${statusBadge}</td>
+          <td class="py-3 px-3 text-gray-300 font-mono">${item.qty || '-'}</td>
+          <td class="py-3 px-3 text-right">
+            <div class="inline-flex items-center gap-1.5">
+              <button onclick="cycleItemStatus(${item.id})" title="Ubah Status Cepat" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-emerald-400 transition-colors">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="deleteItem(${item.id})" title="Hapus Item" class="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-rose-400 transition-colors">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Cycle Item Status: Tersedia -> Menipis -> Habis -> Tersedia
+    function cycleItemStatus(id) {
+      const item = state.inventory.find(i => i.id === id);
+      if (!item) return;
+      if (item.status === 'Tersedia') item.status = 'Menipis';
+      else if (item.status === 'Menipis') item.status = 'Habis';
+      else item.status = 'Tersedia';
+      saveState();
+    }
+
+    function deleteItem(id) {
+      state.inventory = state.inventory.filter(i => i.id !== id);
+      saveState();
+    }
+
+    function filterInventory(cat) {
+      state.filterInv = cat;
+      document.querySelectorAll('.inv-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-gray-800', 'text-white');
+        btn.classList.add('text-gray-400');
+      });
+      event.target.classList.add('bg-gray-800', 'text-white');
+      event.target.classList.remove('text-gray-400');
+      renderInventory();
+      lucide.createIcons();
+    }
+
+    // Render Tasks
+    function renderTasks() {
+      const container = document.getElementById('tasksListContainer');
+      container.innerHTML = '';
+
+      let tasks = state.tasks;
+      if (state.searchQuery) {
+        tasks = tasks.filter(t => t.title.toLowerCase().includes(state.searchQuery.toLowerCase()) || (t.assignee && t.assignee.toLowerCase().includes(state.searchQuery.toLowerCase())));
+      }
+
+      if (tasks.length === 0) {
+        container.innerHTML = `<div class="py-6 text-center text-gray-500 text-xs">Semua tugas beres atau tidak ditemukan.</div>`;
+        return;
+      }
+
+      tasks.forEach(task => {
+        const item = document.createElement('div');
+        item.className = `p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${task.done ? 'bg-gray-950/30 border-gray-800/40 opacity-60' : 'bg-gray-950/70 border-gray-800 hover:border-gray-700'}`;
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <button onclick="toggleTaskDone(${task.id})" class="w-5 h-5 rounded-md flex items-center justify-center transition-all ${task.done ? 'bg-emerald-600 text-white' : 'border border-gray-600 hover:border-emerald-500'}">
+              ${task.done ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}
+            </button>
+            <div>
+              <div class="text-xs font-medium ${task.done ? 'line-through text-gray-500' : 'text-slate-200'}">
+                ${task.title}
+              </div>
+              <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-400">
+                <span class="inline-flex items-center gap-1"><i data-lucide="user" class="w-3 h-3 text-blue-400"></i> ${task.assignee || 'Semua'}</span>
+                <span>•</span>
+                <span class="inline-flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3 text-amber-400"></i> ${task.schedule || task.freq}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-300">
+              ${task.freq}
+            </span>
+            <button onclick="deleteTask(${task.id})" class="p-1 rounded text-gray-500 hover:text-rose-400 hover:bg-gray-800 transition-colors">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function toggleTaskDone(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (task) {
+        task.done = !task.done;
+        saveState();
+      }
+    }
+
+    function deleteTask(id) {
+      state.tasks = state.tasks.filter(t => t.id !== id);
+      saveState();
+    }
+
+    // Render Bills
+    function renderBills() {
+      const container = document.getElementById('billsListContainer');
+      container.innerHTML = '';
+
+      state.bills.forEach(bill => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl bg-gray-950/60 border border-gray-800 flex items-center justify-between gap-3 text-xs';
+        item.innerHTML = `
+          <div>
+            <div class="font-medium text-slate-200">${bill.name}</div>
+            <div class="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+              <span>${bill.due}</span>
+              <span>•</span>
+              <span class="font-mono text-emerald-400">${formatRp(bill.amount)}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="toggleBillPaid(${bill.id})" class="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${bill.paid ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20'}">
+              ${bill.paid ? '✓ Lunas' : 'Belum Bayar'}
+            </button>
+            <button onclick="deleteBill(${bill.id})" class="p-1 text-gray-500 hover:text-rose-400">
+              <i data-lucide="trash-2" class="w-3 h-3"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function toggleBillPaid(id) {
+      const bill = state.bills.find(b => b.id === id);
+      if (bill) {
+        bill.paid = !bill.paid;
+        saveState();
+      }
+    }
+
+    function deleteBill(id) {
+      state.bills = state.bills.filter(b => b.id !== id);
+      saveState();
+    }
+
+    // Form Handlers
+    function handleSaveDevice(e) {
+      e.preventDefault();
+      const newDev = {
+        id: Date.now(),
+        name: document.getElementById('devName').value,
+        owner: document.getElementById('devOwner').value || 'Umum',
+        type: document.getElementById('devType').value,
+        vendor: 'Kustom',
+        ip: document.getElementById('devIP').value || '192.168.1.' + Math.floor(Math.random() * 100 + 100),
+        mac: document.getElementById('devMAC').value || 'AA:BB:CC:DD:EE:' + Math.floor(Math.random() * 89 + 10),
+        online: true,
+        trust: document.getElementById('devTrust').value
+      };
+      state.wifiDevices.unshift(newDev);
+      saveState();
+      closeModal('addDeviceModal');
+      document.getElementById('deviceForm').reset();
+    }
+
+    function handleSaveItem(e) {
+      e.preventDefault();
+      const newItem = {
+        id: Date.now(),
+        name: document.getElementById('itemName').value,
+        category: document.getElementById('itemCategory').value,
+        status: document.getElementById('itemStatus').value,
+        qty: document.getElementById('itemQuantity').value || 'Tersedia',
+        price: Number(document.getElementById('itemPrice').value) || 0
+      };
+      state.inventory.unshift(newItem);
+      saveState();
+      closeModal('addItemModal');
+      document.getElementById('itemForm').reset();
+    }
+
+    function handleSaveTask(e) {
+      e.preventDefault();
+      const newTask = {
+        id: Date.now(),
+        title: document.getElementById('taskTitle').value,
+        assignee: document.getElementById('taskAssignee').value || 'Semua',
+        freq: document.getElementById('taskFrequency').value,
+        schedule: document.getElementById('taskSchedule').value || 'Fleksibel',
+        done: false
+      };
+      state.tasks.unshift(newTask);
+      saveState();
+      closeModal('addTaskModal');
+      document.getElementById('taskForm').reset();
+    }
+
+    function handleSaveBill(e) {
+      e.preventDefault();
+      const newBill = {
+        id: Date.now(),
+        name: document.getElementById('billName').value,
+        amount: Number(document.getElementById('billAmount').value) || 0,
+        due: document.getElementById('billDueDate').value || 'Bulanan',
+        paid: false
+      };
+      state.bills.unshift(newBill);
+      saveState();
+      closeModal('addBillModal');
+      document.getElementById('billForm').reset();
+    }
+
+    // Tab Switcher
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-gray-400');
+      });
+      document.getElementById(`tabBtn-${tab}`).classList.add('bg-emerald-600', 'text-white', 'shadow-sm');
+      document.getElementById(`tabBtn-${tab}`).classList.remove('text-gray-400');
+
+      const wifiPanel = document.getElementById('panelWifi');
+      const invPanel = document.getElementById('panelInventory');
+      const tasksPanel = document.getElementById('panelTasks');
+      const billsPanel = document.getElementById('panelBills');
+
+      if (tab === 'all') {
+        wifiPanel.style.display = 'block';
+        invPanel.style.display = 'block';
+        tasksPanel.style.display = 'block';
+        billsPanel.style.display = 'block';
+      } else if (tab === 'wifi') {
+        wifiPanel.style.display = 'block';
+        invPanel.style.display = 'none';
+        tasksPanel.style.display = 'none';
+        billsPanel.style.display = 'none';
+      } else if (tab === 'inventory') {
+        wifiPanel.style.display = 'none';
+        invPanel.style.display = 'block';
+        tasksPanel.style.display = 'none';
+        billsPanel.style.display = 'none';
+      } else if (tab === 'tasks') {
+        wifiPanel.style.display = 'none';
+        invPanel.style.display = 'none';
+        tasksPanel.style.display = 'block';
+        billsPanel.style.display = 'none';
+      } else if (tab === 'bills') {
+        wifiPanel.style.display = 'none';
+        invPanel.style.display = 'none';
+        tasksPanel.style.display = 'none';
+        billsPanel.style.display = 'block';
+      }
+    }
+
+    function handleGlobalSearch() {
+      state.searchQuery = document.getElementById('globalSearch').value;
+      renderWifiDevices();
+      renderInventory();
+      renderTasks();
+      lucide.createIcons();
+    }
+
+    // Live Clock & Date
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('liveClock').innerText = now.toLocaleTimeString('id-ID');
+      const options = { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' };
+      document.getElementById('liveDate').innerText = now.toLocaleDateString('id-ID', options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Overall Render
+    function renderDashboard() {
+      renderKPIs();
+      renderWifiDevices();
+      renderInventory();
+      renderTasks();
+      renderBills();
+      lucide.createIcons();
+    }
+
+    // Initial Execution
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDashboard();
+    });
+  </script>
+</body>
+</html>
